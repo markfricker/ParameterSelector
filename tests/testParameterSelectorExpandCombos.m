@@ -15,6 +15,12 @@ classdef testParameterSelectorExpandCombos < matlab.unittest.TestCase
 %     table across every checked method and so cross-producted irrelevant
 %     methods' rows together
 %   - cross-join across the enhance/skeleton steps
+%   - a parameter-free candidate method (zero rows, e.g. skeleton's
+%     'WS + NMS') still contributes exactly one combo instead of vanishing
+%     -- regression test for a real bug found while designing the Phase 2
+%     UI (2026-08-10): the method list must be passed explicitly, not
+%     inferred from unique(rows.method), or parameter-free methods that
+%     never generate a row are silently invisible to the sweep.
 %   - error on an empty tune range and on a step with no candidate methods
 
     methods (TestClassSetup)
@@ -29,7 +35,7 @@ classdef testParameterSelectorExpandCombos < matlab.unittest.TestCase
             rows = [ ...
                 tc.mkRow('enhance', 'vesselness', 'sigmaMin', 1, false, 1, 1, 1), ...
                 tc.mkRow('skeleton', 'hysteresis', 'threshHigh', 0.5, false, 0.5, 0.5, 0.5)];
-            combos = parameterSelectorExpandCombos(rows);
+            combos = parameterSelectorExpandCombos(rows, {'vesselness'}, {'hysteresis'});
             tc.verifyEqual(numel(combos), 1);
             tc.verifyEqual(combos(1).enhanceMethod, 'vesselness');
             tc.verifyEqual(combos(1).enhanceValues.sigmaMin, 1);
@@ -44,7 +50,7 @@ classdef testParameterSelectorExpandCombos < matlab.unittest.TestCase
                 tc.mkRow('enhance', 'vesselness', 'sigmaMin', 1, true, 1, 1, 2), ...
                 tc.mkRow('enhance', 'vesselness', 'sigmaMax', 4, true, 3, 1, 5), ...
                 tc.mkRow('skeleton', 'hysteresis', 'threshHigh', 0.5, false, 0.5, 0.5, 0.5)];
-            combos = parameterSelectorExpandCombos(rows);
+            combos = parameterSelectorExpandCombos(rows, {'vesselness'}, {'hysteresis'});
             tc.verifyEqual(numel(combos), 6);
 
             pairs = arrayfun(@(c) sprintf('%g,%g', c.enhanceValues.sigmaMin, c.enhanceValues.sigmaMax), ...
@@ -60,7 +66,7 @@ classdef testParameterSelectorExpandCombos < matlab.unittest.TestCase
                 tc.mkRow('enhance', 'vesselness', 'sigmaMin', 1, true, 1, 1, 2), ...
                 tc.mkRow('enhance', 'ridge', 'alpha', 0.3, true, 0.3, 0.1, 0.5), ...
                 tc.mkRow('skeleton', 'hysteresis', 'threshHigh', 0.5, false, 0.5, 0.5, 0.5)];
-            combos = parameterSelectorExpandCombos(rows);
+            combos = parameterSelectorExpandCombos(rows, {'vesselness','ridge'}, {'hysteresis'});
             tc.verifyEqual(numel(combos), 5);
             methods = {combos.enhanceMethod};
             tc.verifyEqual(sum(strcmp(methods, 'vesselness')), 2);
@@ -72,21 +78,46 @@ classdef testParameterSelectorExpandCombos < matlab.unittest.TestCase
             rows = [ ...
                 tc.mkRow('enhance', 'vesselness', 'sigmaMin', 1, true, 1, 1, 2), ...
                 tc.mkRow('skeleton', 'hysteresis', 'threshHigh', 0.3, true, 0.3, 0.1, 0.5)];
-            combos = parameterSelectorExpandCombos(rows);
+            combos = parameterSelectorExpandCombos(rows, {'vesselness'}, {'hysteresis'});
             tc.verifyEqual(numel(combos), 2 * 3);
+        end
+
+        function testParameterFreeMethodContributesOneComboInsteadOfVanishing(tc)
+            % skeleton candidate 'WS + NMS' has no tunable sub-struct in the
+            % real defaults (AnalyzER_app_extracted.m:3687-3688) and so
+            % generates zero rows -- it must still appear as a real combo.
+            rows = tc.mkRow('enhance', 'vesselness', 'sigmaMin', 1, false, 1, 1, 1);
+            combos = parameterSelectorExpandCombos(rows, {'vesselness'}, {'WS + NMS'});
+            tc.verifyEqual(numel(combos), 1);
+            tc.verifyEqual(combos(1).skeletonMethod, 'WS + NMS');
+            tc.verifyEqual(fieldnames(combos(1).skeletonValues), cell(0,1));
+        end
+
+        function testParameterFreeMethodUnionsWithTunedMethod(tc)
+            % skeleton: hysteresis (threshHigh tuned over [0.3 0.4 0.5],
+            % 3 combos) union 'WS + NMS' (1 combo, parameter-free) -> 4
+            % skeleton-side combos.
+            rows = [ ...
+                tc.mkRow('enhance', 'vesselness', 'sigmaMin', 1, false, 1, 1, 1), ...
+                tc.mkRow('skeleton', 'hysteresis', 'threshHigh', 0.3, true, 0.3, 0.1, 0.5)];
+            combos = parameterSelectorExpandCombos(rows, {'vesselness'}, {'hysteresis', 'WS + NMS'});
+            tc.verifyEqual(numel(combos), 4);
+            methods = {combos.skeletonMethod};
+            tc.verifyEqual(sum(strcmp(methods, 'hysteresis')), 3);
+            tc.verifyEqual(sum(strcmp(methods, 'WS + NMS')), 1);
         end
 
         function testEmptyTuneRangeThrows(tc)
             rows = [ ...
                 tc.mkRow('enhance', 'vesselness', 'sigmaMin', 5, true, 5, 1, 2), ...  % min > max, empty range
                 tc.mkRow('skeleton', 'hysteresis', 'threshHigh', 0.5, false, 0.5, 0.5, 0.5)];
-            tc.verifyError(@() parameterSelectorExpandCombos(rows), ...
+            tc.verifyError(@() parameterSelectorExpandCombos(rows, {'vesselness'}, {'hysteresis'}), ...
                 'parameterSelectorExpandCombos:emptyRange');
         end
 
         function testMissingStepThrows(tc)
             rows = tc.mkRow('enhance', 'vesselness', 'sigmaMin', 1, false, 1, 1, 1);
-            tc.verifyError(@() parameterSelectorExpandCombos(rows), ...
+            tc.verifyError(@() parameterSelectorExpandCombos(rows, {'vesselness'}, {}), ...
                 'parameterSelectorExpandCombos:empty');
         end
     end

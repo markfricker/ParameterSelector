@@ -80,7 +80,7 @@ classdef testParameterSelectorRunSweep < matlab.unittest.TestCase
                 tc.makeRows('enhance', 'vesselness', enhanceFields, 'sigmaMax', true, 2, 1, 3), ...
                 tc.makeRows('skeleton', 'hysteresis', skeletonFields, 'threshHigh', true, 0.3, 0.2, 0.5)];
 
-            combos = parameterSelectorExpandCombos(rows);
+            combos = parameterSelectorExpandCombos(rows, {'vesselness'}, {'hysteresis'});
             tc.verifyEqual(numel(combos), 2 * 2);
 
             results = parameterSelectorRunSweep(im, gt, roiMask, cisterna, erMask, erFenestrations, ...

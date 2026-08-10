@@ -1,21 +1,31 @@
-function combos = parameterSelectorExpandCombos(rows)
+function combos = parameterSelectorExpandCombos(rows, enhanceMethods, skeletonMethods)
 %PARAMETERSELECTOREXPANDCOMBOS  Build the combined enhance x skeleton sweep grid.
 %
-%   combos = parameterSelectorExpandCombos(rows)
+%   combos = parameterSelectorExpandCombos(rows, enhanceMethods, skeletonMethods)
 %
 % ARGUMENTS
-%   rows – struct array, one entry per (step, method, parameter), with
-%          fields:
-%            .step      – 'enhance' | 'skeleton'
-%            .method    – method name, e.g. 'vesselness'
-%            .parameter – field name, e.g. 'sigmaMin'
-%            .current   – current/fixed value (used verbatim when tune=false)
-%            .tune      – logical; sweep this field over min:inc:max
-%            .min, .inc, .max – sweep range (ignored when tune=false)
+%   rows            – struct array, one entry per (step, method, parameter),
+%                      with fields:
+%                        .step      – 'enhance' | 'skeleton'
+%                        .method    – method name, e.g. 'vesselness'
+%                        .parameter – field name, e.g. 'sigmaMin'
+%                        .current   – current/fixed value (used verbatim
+%                                     when tune=false)
+%                        .tune      – logical; sweep this field over min:inc:max
+%                        .min, .inc, .max – sweep range (ignored when tune=false)
 %
-%          Every field of every user-selected candidate method must have a
-%          row (see parameterSelectorMethodFields) — untuned rows still
-%          supply that field's fixed current value to every combo.
+%                      Every field of every user-selected candidate method
+%                      that HAS tunable fields must have a row (see
+%                      parameterSelectorMethodFields) — untuned rows still
+%                      supply that field's fixed current value to every combo.
+%   enhanceMethods  – cellstr of every candidate enhance method the user
+%                      selected, INCLUDING parameter-free methods (e.g.
+%                      skeleton's 'WS + NMS' / 'ridgeWatershed', which have
+%                      no tunable sub-struct and so contribute zero rows —
+%                      passing the method list explicitly, rather than
+%                      inferring it from unique(rows.method), is what keeps
+%                      those methods from silently vanishing from the sweep).
+%   skeletonMethods – same, for the skeleton step.
 %
 % RETURNS
 %   combos – struct array, one entry per resulting combination:
@@ -32,15 +42,17 @@ function combos = parameterSelectorExpandCombos(rows)
 %   tuned fields ARE cross-producted together (mixed-radix "odometer"
 %   expansion, same algorithm as those legacy tools' fnc_parameter_sequence).
 %   The two steps are then cross-joined, since assessing the enhance+
-%   skeleton combination jointly is the whole point of this tool.
+%   skeleton combination jointly is the whole point of this tool. A
+%   parameter-free method contributes exactly one combo (itself, no values).
 
-    stepNames = {'enhance', 'skeleton'};
+    stepNames   = {'enhance', 'skeleton'};
+    stepMethods = {enhanceMethods, skeletonMethods};
     stepMethodCombos = struct();
     for si = 1:numel(stepNames)
         stepName = stepNames{si};
+        methodsHere = stepMethods{si};
         mask = strcmp({rows.step}, stepName);
         stepRows = rows(mask);
-        methodsHere = unique({stepRows.method}, 'stable');
 
         acc = struct('method', {}, 'values', {});
         for mi = 1:numel(methodsHere)
@@ -58,8 +70,7 @@ function combos = parameterSelectorExpandCombos(rows)
     sList = stepMethodCombos.skeleton;
     if isempty(eList) || isempty(sList)
         error('parameterSelectorExpandCombos:empty', ...
-            ['At least one candidate method (with a full field set) is ' ...
-             'required for both the enhance and skeleton steps.']);
+            'At least one candidate method is required for both the enhance and skeleton steps.');
     end
 
     combos = struct('enhanceMethod', {}, 'enhanceValues', {}, ...
@@ -78,11 +89,13 @@ end
 
 function mCombos = parameterSelectorExpandMethodRows(mRows)
 %PARAMETERSELECTOREXPANDMETHODROWS  Mixed-radix cross-product over one
-%method's own rows (private helper).
+%method's own rows (private helper). A method with zero rows (parameter-
+%free, e.g. skeleton's 'WS + NMS') still yields exactly one combo — an
+%empty values struct — rather than vanishing from the sweep.
 
     n = numel(mRows);
     if n == 0
-        mCombos = struct([]);
+        mCombos = struct();
         return
     end
 
