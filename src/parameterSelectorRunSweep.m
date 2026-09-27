@@ -58,7 +58,6 @@ function [results, imagesOut] = parameterSelectorRunSweep( ...
         c = combos(k);
 
         pEnhance = parameterSelectorBuildFlatParams(enhanceCurrentParams, c.enhanceMethod, c.enhanceValues);
-        pEnhance.legacyFlag = 0;
         pEnhance.fwhmTarget = fwhmTarget;
 
         pSkeleton = parameterSelectorBuildFlatParams(skeletonCurrentParams, c.skeletonMethod, c.skeletonValues);
