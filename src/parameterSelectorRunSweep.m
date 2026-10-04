@@ -21,7 +21,8 @@ function [results, imagesOut] = parameterSelectorRunSweep( ...
 %   tolerance    – ROC match tolerance in pixels (analyzerRocAnalysis).
 %   fwhmTarget   – app.parameterDefaults.process.main.resample.fwhmTarget;
 %                  sets pEnhance.fwhmTarget (guided-filter merge) and
-%                  pSkeleton.minAreaPixels = fwhmTarget*2, matching the live
+%                  pSkeleton.minLengthPixels = fwhmTarget*2 (skeleton fragment
+%                  length filter, formerly minAreaPixels), matching the live
 %                  app (AnalyzER_app_extracted.m:13493,13536).
 %   code         – filename string stamped into every results row.
 %   progressFcn  – optional @(iCombo, nCombos) callback for a UI progress bar.
@@ -61,7 +62,7 @@ function [results, imagesOut] = parameterSelectorRunSweep( ...
         pEnhance.fwhmTarget = fwhmTarget;
 
         pSkeleton = parameterSelectorBuildFlatParams(skeletonCurrentParams, c.skeletonMethod, c.skeletonValues);
-        pSkeleton.minAreaPixels = fwhmTarget * 2;
+        pSkeleton.minLengthPixels = fwhmTarget * 2;
 
         [statsRow, images] = parameterSelectorRunCombo(im, gt, roiMask, cisterna, ...
             erMask, erFenestrations, cellBoundary, imBackground, pEnhance, pSkeleton, tolerance, code);
