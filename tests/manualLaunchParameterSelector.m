@@ -133,12 +133,12 @@ skeletonDefaults.hysteresis2 = struct('sensitivity', 0.5);
 skeletonCurrent = skeletonDefaults;
 
 tolerance = 2;
-fwhmTarget = 4;
+tubuleDiameterTarget = 4;
 code = 'manual-test';
 
 %% Launch.
 ps = ParameterSelector(im, gt, roiMask, cisterna, erMask, erFenestrations, cellBoundary, imBackground, ...
-    enhanceCurrent, enhanceDefaults, skeletonCurrent, skeletonDefaults, tolerance, fwhmTarget, code);
+    enhanceCurrent, enhanceDefaults, skeletonCurrent, skeletonDefaults, tolerance, tubuleDiameterTarget, code);
 uiwait(ps.UIFigure);
 
 if isvalid(ps)

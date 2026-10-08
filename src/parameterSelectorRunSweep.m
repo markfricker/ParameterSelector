@@ -1,6 +1,6 @@
 function [results, imagesOut] = parameterSelectorRunSweep( ...
         im, gt, roiMask, cisterna, erMask, erFenestrations, cellBoundary, imBackground, ...
-        enhanceCurrentParams, skeletonCurrentParams, combos, tolerance, fwhmTarget, code, ...
+        enhanceCurrentParams, skeletonCurrentParams, combos, tolerance, tubuleDiameterTarget, code, ...
         progressFcn, keepImages)
 %PARAMETERSELECTORRUNSWEEP  Run every combo in `combos`, return a ranked
 %results table.
@@ -8,7 +8,7 @@ function [results, imagesOut] = parameterSelectorRunSweep( ...
 %   results = parameterSelectorRunSweep(im, gt, roiMask, cisterna, ...
 %       erMask, erFenestrations, cellBoundary, imBackground, ...
 %       enhanceCurrentParams, skeletonCurrentParams, combos, ...
-%       tolerance, fwhmTarget, code)
+%       tolerance, tubuleDiameterTarget, code)
 %   results = parameterSelectorRunSweep(..., progressFcn)
 %   [results, imagesOut] = parameterSelectorRunSweep(..., progressFcn, keepImages)
 %
@@ -19,9 +19,9 @@ function [results, imagesOut] = parameterSelectorRunSweep( ...
 %           parameterSelectorBuildFlatParams.
 %   combos       – output of parameterSelectorExpandCombos.
 %   tolerance    – ROC match tolerance in pixels (analyzerRocAnalysis).
-%   fwhmTarget   – app.parameterDefaults.process.main.resample.fwhmTarget;
-%                  sets pEnhance.fwhmTarget (guided-filter merge) and
-%                  pSkeleton.minLengthPixels = fwhmTarget*2 (skeleton fragment
+%   tubuleDiameterTarget   – app.parameterDefaults.process.main.resample.tubuleDiameterTarget;
+%                  sets pEnhance.tubuleDiameterTarget (guided-filter merge) and
+%                  pSkeleton.minLengthPixels = tubuleDiameterTarget*2 (skeleton fragment
 %                  length filter, formerly minAreaPixels), matching the live
 %                  app (AnalyzER_app_extracted.m:13493,13536).
 %   code         – filename string stamped into every results row.
@@ -59,10 +59,10 @@ function [results, imagesOut] = parameterSelectorRunSweep( ...
         c = combos(k);
 
         pEnhance = parameterSelectorBuildFlatParams(enhanceCurrentParams, c.enhanceMethod, c.enhanceValues);
-        pEnhance.fwhmTarget = fwhmTarget;
+        pEnhance.tubuleDiameterTarget = tubuleDiameterTarget;
 
         pSkeleton = parameterSelectorBuildFlatParams(skeletonCurrentParams, c.skeletonMethod, c.skeletonValues);
-        pSkeleton.minLengthPixels = fwhmTarget * 2;
+        pSkeleton.minLengthPixels = tubuleDiameterTarget * 2;
 
         [statsRow, images] = parameterSelectorRunCombo(im, gt, roiMask, cisterna, ...
             erMask, erFenestrations, cellBoundary, imBackground, pEnhance, pSkeleton, tolerance, code);
